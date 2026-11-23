@@ -25,6 +25,17 @@ function readStdin(): Promise<string> {
   })
 }
 
+/**
+ * The package library beside a screen's .guix (library.guix in the same
+ * folder), so names the screen uses from it count as declared. Undefined for
+ * anything else.
+ */
+function siblingLibrary(file: string): string | undefined {
+  if (!/\.guix$/i.test(file) || path.basename(file) === 'library.guix') return undefined
+  const library = path.join(path.dirname(file), 'library.guix')
+  return existsSync(library) ? readFileSync(library, 'utf-8') : undefined
+}
+
 function guiName(xml: string): string {
   return xml.match(/<gui\b[^>]*\bname="([^"]*)"/)?.[1] ?? '(unnamed)'
 }
@@ -74,7 +85,7 @@ export async function writeCommand(file: string, opts: { noPreview?: boolean; js
   const xml = (await readStdin()).trim()
   if (!xml.startsWith('<gui')) fail('stdin is not a <gui> markup document', 2)
 
-  const result = lintMarkup(xml)
+  const result = lintMarkup(xml, { library: siblingLibrary(path.resolve(process.cwd(), file)) })
   if (!result.ok) {
     if (opts.json) { console.log(JSON.stringify(result.errors)); }
     else { console.log(c.red(`  ${result.errors.length} lint error(s) — not written:`)); printIssues(result.errors) }
@@ -85,13 +96,13 @@ export async function writeCommand(file: string, opts: { noPreview?: boolean; js
   const pkg: GuiPackage = existsSync(abs) ? readPackage(abs) : { xml: '', assets: {} }
   pkg.xml = xml
 
-  // Regenerate the preview from the new markup. Soft: if no Chromium browser is
-  // installed we keep the old preview and move on (never block a write on it).
+  // Regenerate the preview from the new markup. Soft: if it cannot be drawn we
+  // keep the old preview and move on (never block a write on it).
   let previewNote = ''
   if (!opts.noPreview) {
     const res = await rasterize(pkg, { format: 'webp' })
     if (res.image) { pkg.preview = res.image; previewNote = ' · preview updated' }
-    else if (res.reason === 'no-browser') previewNote = ' · preview skipped (no browser)'
+    else previewNote = ` · preview skipped (${res.reason === 'no-renderer' ? 'renderer not installed' : 'did not render'})`
   }
 
   writePackage(abs, pkg)
@@ -118,7 +129,7 @@ export async function lintCommand(file: string, opts: { fix?: boolean; json?: bo
     }
   }
 
-  const result = lintMarkup(pkg.xml)
+  const result = lintMarkup(pkg.xml, { library: siblingLibrary(abs) })
   if (!result.ran) { warn('linter not found — skipped'); return }
 
   if (opts.json) { console.log(JSON.stringify(result.issues, null, 2)) }
