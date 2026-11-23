@@ -77,11 +77,11 @@ gui render app.gui -o out.png   # rasterize to an image (PNG/WEBP/JPEG by extens
 gui open   app.gui              # open in the dotgui viewer
 ```
 
-`render` (and the preview that `gui write` regenerates) drives a **Chromium-based
-browser already installed** on your machine — Chrome, Edge, Brave, or Chromium —
-via puppeteer-core (no bundled browser). Set `PUPPETEER_EXECUTABLE_PATH` to force a
-specific one. If none is found, `render` fails with guidance and `gui write` simply
-skips the preview rather than blocking the save.
+`render` (and the preview that `gui write` regenerates) draws with the dotgui
+renderer — Rust, compiled to WebAssembly, installed with the CLI. No browser. It
+reads your installed fonts and fetches Google fonts and remote images. If a
+document cannot be drawn, `render` says why and `gui write` simply skips the
+preview rather than blocking the save.
 
 ### Inspect
 

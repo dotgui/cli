@@ -9,8 +9,7 @@ import {
 import { openCommand } from './commands/open.js'
 import { renderCommand } from './commands/render.js'
 import { setupCommand, skillCommand } from './commands/setup.js'
-
-const VERSION = '0.2.0'
+import { version as VERSION } from '../package.json'
 
 // Best-effort cleanup of any stray extract dirs from a crashed run.
 sweepCache()
